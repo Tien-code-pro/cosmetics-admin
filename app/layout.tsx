@@ -1,5 +1,7 @@
-import Sidebar from "@/components/Sidebar";
 import "./globals.css";
+
+import Sidebar from "../components/Sidebar";
+import { AuthProvider } from "@/components/AuthContext";
 
 export default function RootLayout({
   children,
@@ -8,10 +10,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className="bg-slate-50 text-slate-900 antialiased">
-        <Sidebar />
-
-        <main className="min-h-screen pl-[250px]">{children}</main>
+      <body>
+        <AuthProvider>
+          <div style={{ display: "flex", minHeight: "100vh" }}>
+            <Sidebar />
+            <main style={{ flex: 1, marginLeft: 250, padding: 24 }}>
+              {children}
+            </main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
