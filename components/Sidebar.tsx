@@ -3,6 +3,7 @@
 import { isAdmin, getCurrentUser, logout } from "@/app/lib/auth";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const menuItems = [
   {
@@ -36,7 +37,11 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const user = getCurrentUser();
+  const [user, setUser] = useState<ReturnType<typeof getCurrentUser>>(null);
+
+  useEffect(() => {
+    setUser(getCurrentUser());
+  }, []);
 
   const handleLogout = () => {
     logout();

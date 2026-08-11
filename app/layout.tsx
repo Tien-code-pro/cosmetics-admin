@@ -1,6 +1,6 @@
 import "./globals.css";
 
-import Sidebar from "../components/Sidebar";
+import AppShell from "../components/AppShell";
 import { AuthProvider } from "@/components/AuthContext";
 
 export default function RootLayout({
@@ -12,12 +12,7 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <AuthProvider>
-          <div style={{ display: "flex", minHeight: "100vh" }}>
-            <Sidebar />
-            <main style={{ flex: 1, marginLeft: 250, padding: 24 }}>
-              {children}
-            </main>
-          </div>
+          <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>
     </html>
