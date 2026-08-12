@@ -147,6 +147,22 @@ export default function ProductViewModal({ product, onClose }: Props) {
 
                 {/* XUẤT XỨ */}
                 <InfoItem label="Xuất xứ" value={product.origin || "—"} />
+
+                <InfoItem
+                  label="Loại da phù hợp"
+                  value={
+                    product.skinType?.length > 0
+                      ? product.skinType.join(", ")
+                      : "—"
+                  }
+                />
+                {product.originalPrice && (
+                  <InfoItem
+                    label="Giá gốc"
+                    value={formatPrice(product.originalPrice)}
+                    valueClassName="line-through text-slate-400"
+                  />
+                )}
               </div>
             </div>
 

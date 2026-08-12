@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-};
+import Link from "next/link";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -230,11 +225,21 @@ export default function CategoriesPage() {
               </p>
             </div>
 
-            {!loading && categories.length > 0 && (
-              <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
-                {categories.length} danh mục
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              <Link
+                href="/trash"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+              >
+                🗑️
+                <span>Thùng rác</span>
+              </Link>
+
+              {!loading && categories.length > 0 && (
+                <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
+                  {categories.length} danh mục
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Loading */}

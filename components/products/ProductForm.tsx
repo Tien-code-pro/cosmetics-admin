@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Category, Product, Spec } from "@/type/product";
+import { SKIN_TYPES } from "@/app/lib/constants";
 
 const RichTextEditor = dynamic(() => import("../RichTextEditor"), {
   ssr: false,
@@ -25,6 +26,8 @@ const initialForm = {
   usageInstructions: "",
   brand: "",
   origin: "",
+  originalPrice: "",
+  skinType: [] as string[],
 };
 
 type FormData = typeof initialForm;
@@ -82,6 +85,10 @@ export default function ProductForm({
       usageInstructions: editingProduct.usageInstructions || "",
       brand: editingProduct.brand || "",
       origin: editingProduct.origin || "",
+      originalPrice: editingProduct.originalPrice
+        ? String(editingProduct.originalPrice)
+        : "",
+      skinType: editingProduct.skinType || [],
     });
 
     setSpecs(
@@ -115,6 +122,15 @@ export default function ProductForm({
     setForm((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const toggleSkinType = (type: string) => {
+    setForm((prev) => ({
+      ...prev,
+      skinType: prev.skinType.includes(type)
+        ? prev.skinType.filter((t) => t !== type)
+        : [...prev.skinType, type],
     }));
   };
 
@@ -294,7 +310,7 @@ export default function ProductForm({
         </div>
 
         {/* GIÁ / KHO / DANH MỤC */}
-        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Giá bán
@@ -308,6 +324,20 @@ export default function ProductForm({
               onChange={handleChange}
               required
               placeholder="200.000"
+              className="h-11 w-full rounded-lg border border-slate-300 px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Giá gốc (nếu có giảm giá)
+            </label>
+            <input
+              name="originalPrice"
+              type="number"
+              min="0"
+              value={form.originalPrice}
+              onChange={handleChange}
+              placeholder="250.000"
               className="h-11 w-full rounded-lg border border-slate-300 px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -350,7 +380,6 @@ export default function ProductForm({
           </div>
         </div>
 
-        {/* ẢNH */}
         {/* ẢNH */}
         <div className="mt-6">
           <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -542,6 +571,30 @@ export default function ProductForm({
               onChange={handleChange}
               className="h-11 w-full rounded-lg border border-slate-300 px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Loại da phù hợp
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {SKIN_TYPES.map((type) => {
+                const isSelected = form.skinType.includes(type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => toggleSkinType(type)}
+                    className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+                      isSelected
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-300 bg-white text-slate-600 hover:border-blue-300"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

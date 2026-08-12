@@ -25,4 +25,7 @@ export type Product = {
   brand: string | null;
   origin: string | null;
   specifications: Record<string, string> | null;
+  originalPrice: number | null;
+  skinType: string[];
+  deletedAt?: string | null;
 };

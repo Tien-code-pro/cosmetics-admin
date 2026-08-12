@@ -1,7 +1,7 @@
-// components/products/ProductList.tsx
 "use client";
 
 import { Product } from "@/type/product";
+import Link from "next/link";
 
 interface ProductListProps {
   products: Product[];
@@ -46,6 +46,7 @@ export default function ProductList({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* HEADER */}
       <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
@@ -57,13 +58,24 @@ export default function ProductList({
           </p>
         </div>
 
-        {!loading && products.length > 0 && (
-          <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
-            {products.length} sản phẩm
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {/* THÙNG RÁC */}
+          <Link
+            href="/trash"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+          >
+            🗑️ Thùng rác
+          </Link>
+
+          {!loading && products.length > 0 && (
+            <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
+              {products.length} sản phẩm
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* CONTENT */}
       {loading ? (
         <div className="divide-y divide-slate-100">
           {[1, 2, 3, 4, 5].map((item) => (
@@ -124,6 +136,7 @@ export default function ProductList({
 
                 return (
                   <tr key={product.id} className="transition hover:bg-slate-50">
+                    {/* SẢN PHẨM */}
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         {product.images?.[0] ? (
@@ -150,18 +163,21 @@ export default function ProductList({
                       </div>
                     </td>
 
+                    {/* SKU */}
                     <td className="px-6 py-5">
                       <code className="rounded-md bg-slate-100 px-2 py-1 text-sm">
                         {product.sku}
                       </code>
                     </td>
 
+                    {/* GIÁ */}
                     <td className="px-6 py-5">
                       <span className="font-semibold">
                         {formatPrice(product.price)}
                       </span>
                     </td>
 
+                    {/* TỒN KHO */}
                     <td className="px-6 py-5">
                       <p className="font-medium">{product.stock}</p>
 
@@ -176,6 +192,7 @@ export default function ProductList({
                       </span>
                     </td>
 
+                    {/* DANH MỤC */}
                     <td className="px-6 py-5">
                       {product.category ? (
                         <span className="rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700">
@@ -188,9 +205,11 @@ export default function ProductList({
                       )}
                     </td>
 
+                    {/* ACTION */}
                     <td className="px-6 py-5">
                       <div className="flex justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => onView(product)}
                           className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-blue-50"
                         >
@@ -198,6 +217,7 @@ export default function ProductList({
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => onEdit(product)}
                           className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-blue-50"
                         >
@@ -205,6 +225,7 @@ export default function ProductList({
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => onDelete(product.id)}
                           className="rounded-lg border border-red-100 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                         >
@@ -220,6 +241,7 @@ export default function ProductList({
         </div>
       )}
 
+      {/* FOOTER */}
       {!loading && products.length > 0 && (
         <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
           <p className="text-sm text-slate-500">

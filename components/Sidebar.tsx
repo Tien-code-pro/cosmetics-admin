@@ -31,6 +31,11 @@ const menuItems = [
     href: "/orders",
     icon: "🛒",
   },
+  {
+    name: "Thùng rác",
+    href: "/trash",
+    icon: "🗑️",
+  },
 ];
 
 export default function Sidebar() {
@@ -62,7 +67,7 @@ export default function Sidebar() {
           <div>
             <h1 className="text-[16px] font-bold tracking-wide">Shop Admin</h1>
 
-            <p className="text-[11px] text-slate-400">Management System</p>
+            <p className="text-[11px] text-slate-400">Tiệm Nhà Tiến</p>
           </div>
         </div>
       </div>

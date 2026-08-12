@@ -202,9 +202,9 @@ export default function LoginPage() {
           {/* Footer */}
 
           <div className="mt-8 border-t border-slate-100 pt-6 text-center">
-            <p className="text-xs text-slate-400">© 2026 Shop Admin</p>
+            <p className="text-xs text-slate-400">© 2026 Shop Admin Của Tiến</p>
 
-            <p className="mt-1 text-xs text-slate-400">Management System</p>
+            <p className="mt-1 text-xs text-slate-400">Tiệm Nhà Tiến</p>
           </div>
         </div>
       </div>

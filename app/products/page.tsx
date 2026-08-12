@@ -21,6 +21,8 @@ const initialForm = {
   usageInstructions: "",
   brand: "",
   origin: "",
+  originalPrice: "",
+  skinType: [] as string[],
 };
 
 type FormData = typeof initialForm;
@@ -148,6 +150,9 @@ export default function ProductsPage() {
         slug: form.slug,
         sku: form.sku,
         price: Number(form.price),
+        originalPrice: form.originalPrice
+          ? Number(form.originalPrice)
+          : undefined,
         stock: Number(form.stock) || 0,
 
         categoryId: form.categoryId || undefined,
@@ -162,6 +167,7 @@ export default function ProductsPage() {
         ...(Object.keys(specifications).length ? { specifications } : {}),
 
         images: finalImages,
+        skinType: form.skinType.length > 0 ? form.skinType : undefined,
       };
 
       // =========================
