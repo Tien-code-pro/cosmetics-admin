@@ -38,6 +38,8 @@ export default function ProductsPage() {
   // Sản phẩm đang xem
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
+  const [formResetKey, setFormResetKey] = useState(0);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -97,20 +99,32 @@ export default function ProductsPage() {
   const handleSubmitProduct = async ({
     form,
     specs,
-    imageFile,
+    imageFiles,
+    existingImages,
   }: {
     form: FormData;
     specs: Spec[];
-    imageFile: File | null;
+    imageFiles: File[];
+    existingImages: string[];
   }) => {
     try {
       setSubmitting(true);
 
-      let imageUrl: string | null = null;
+      // =========================
+      // UPLOAD TẤT CẢ ẢNH
+      // =========================
 
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile);
+      let imageUrls: string[] = [];
+
+      if (imageFiles.length > 0) {
+        imageUrls = await Promise.all(
+          imageFiles.map((file) => uploadImage(file)),
+        );
       }
+
+      // =========================
+      // SPECIFICATIONS
+      // =========================
 
       const specifications = specs.reduce(
         (acc, { key, value }) => {
@@ -123,6 +137,12 @@ export default function ProductsPage() {
         {} as Record<string, string>,
       );
 
+      // =========================
+      // PAYLOAD
+      // =========================
+
+      const finalImages = [...existingImages, ...imageUrls];
+
       const payload = {
         name: form.name,
         slug: form.slug,
@@ -133,21 +153,20 @@ export default function ProductsPage() {
         categoryId: form.categoryId || undefined,
 
         shortDescription: form.shortDescription || undefined,
-
         description: form.description || undefined,
-
         ingredients: form.ingredients || undefined,
-
         usageInstructions: form.usageInstructions || undefined,
-
         brand: form.brand || undefined,
-
         origin: form.origin || undefined,
 
         ...(Object.keys(specifications).length ? { specifications } : {}),
 
-        ...(imageUrl ? { images: [imageUrl] } : {}),
+        images: finalImages,
       };
+
+      // =========================
+      // CREATE / UPDATE
+      // =========================
 
       if (editingProduct) {
         await api.patch(`/products/${editingProduct.id}`, payload);
@@ -156,6 +175,7 @@ export default function ProductsPage() {
       }
 
       setEditingProduct(null);
+      setFormResetKey((prev) => prev + 1);
 
       await loadData();
     } finally {
@@ -216,6 +236,7 @@ export default function ProductsPage() {
           submitting={submitting}
           onSubmit={handleSubmitProduct}
           onCancel={() => setEditingProduct(null)}
+          key={formResetKey}
         />
 
         {/* LIST */}

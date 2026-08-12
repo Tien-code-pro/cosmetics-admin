@@ -36,7 +36,8 @@ interface ProductFormProps {
   onSubmit: (data: {
     form: FormData;
     specs: Spec[];
-    imageFile: File | null;
+    imageFiles: File[];
+    existingImages: string[];
   }) => Promise<void>;
   onCancel: () => void;
 }
@@ -50,8 +51,9 @@ export default function ProductForm({
 }: ProductFormProps) {
   const [form, setForm] = useState<FormData>(initialForm);
   const [specs, setSpecs] = useState<Spec[]>([]);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -61,8 +63,9 @@ export default function ProductForm({
     if (!editingProduct) {
       setForm(initialForm);
       setSpecs([]);
-      setImageFile(null);
-      setImagePreview("");
+      setImageFiles([]);
+      setExistingImages([]);
+      setImagePreviews([]);
       return;
     }
 
@@ -90,8 +93,11 @@ export default function ProductForm({
         : [],
     );
 
-    setImageFile(null);
-    setImagePreview(editingProduct.images?.[0] || "");
+    const oldImages = editingProduct.images || [];
+
+    setImageFiles([]);
+    setExistingImages(oldImages);
+    setImagePreviews(oldImages);
 
     window.scrollTo({
       top: 0,
@@ -113,12 +119,25 @@ export default function ProductForm({
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
 
-    if (!file) return;
+    if (!files.length) return;
 
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    if (imagePreviews.length + files.length > 6) {
+      setFormError("Bạn chỉ được chọn tối đa 6 ảnh");
+      e.target.value = "";
+      return;
+    }
+
+    setFormError("");
+
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+
+    setImageFiles((prev) => [...prev, ...files]);
+
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
+
+    e.target.value = "";
   };
 
   const addSpec = () => {
@@ -153,12 +172,13 @@ export default function ProductForm({
     setFormError("");
 
     try {
-      setUploading(!!imageFile);
+      setUploading(imageFiles.length > 0);
 
       await onSubmit({
         form,
         specs,
-        imageFile,
+        imageFiles,
+        existingImages,
       });
     } catch (error: any) {
       console.error(error);
@@ -166,6 +186,28 @@ export default function ProductForm({
     } finally {
       setUploading(false);
     }
+  };
+
+  const removeImage = (index: number) => {
+    const preview = imagePreviews[index];
+
+    if (!preview) return;
+
+    // Ảnh cũ trên server
+    if (existingImages.includes(preview)) {
+      setExistingImages((prev) => prev.filter((image) => image !== preview));
+    } else {
+      // Ảnh mới vừa chọn
+      const newFileIndex = imagePreviews
+        .slice(0, index)
+        .filter((image) => !existingImages.includes(image)).length;
+
+      setImageFiles((prev) => prev.filter((_, i) => i !== newFileIndex));
+
+      URL.revokeObjectURL(preview);
+    }
+
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -196,11 +238,11 @@ export default function ProductForm({
         )}
       </div>
 
-      {formError && (
+      {/* {formError && (
         <div className="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
           ⚠️ {formError}
         </div>
-      )}
+      )} */}
 
       <form onSubmit={handleSubmit}>
         {/* THÔNG TIN CƠ BẢN */}
@@ -265,6 +307,7 @@ export default function ProductForm({
               value={form.price}
               onChange={handleChange}
               required
+              placeholder="200.000"
               className="h-11 w-full rounded-lg border border-slate-300 px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -280,6 +323,7 @@ export default function ProductForm({
               min="0"
               value={form.stock}
               onChange={handleChange}
+              placeholder="200"
               className="h-11 w-full rounded-lg border border-slate-300 px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -307,52 +351,104 @@ export default function ProductForm({
         </div>
 
         {/* ẢNH */}
+        {/* ẢNH */}
         <div className="mt-6">
           <label className="mb-2 block text-sm font-medium text-slate-700">
             Ảnh sản phẩm
           </label>
 
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
+            {/* ẢNH CHÍNH */}
             <label
               htmlFor="product-image"
-              className="group relative flex h-32 w-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50"
+              className="relative flex h-40 w-40 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50"
             >
-              {imagePreview ? (
+              {imagePreviews[0] ? (
                 <img
-                  src={imagePreview}
-                  alt="Ảnh sản phẩm"
-                  className="h-full w-full object-cover"
+                  src={imagePreviews[0]}
+                  alt="Ảnh chính"
+                  className="h-full w-full object-contain"
                 />
               ) : (
                 <div className="text-center">
-                  <div className="mb-2 text-2xl">📷</div>
+                  <div className="mb-2 text-3xl">📷</div>
 
-                  <span className="text-xs text-slate-600">Chọn ảnh</span>
+                  <p className="text-sm font-medium text-slate-600">
+                    Ảnh chính
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-400">Chọn ảnh</p>
                 </div>
+              )}
+
+              {imagePreviews[0] && (
+                <span className="absolute left-2 top-2 rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white">
+                  Ảnh chính
+                </span>
               )}
 
               <input
                 id="product-image"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                multiple
                 onChange={handleImageChange}
                 className="hidden"
               />
             </label>
 
-            <div className="flex flex-col justify-center">
-              <p className="text-sm font-medium text-slate-700">
-                {imagePreview ? "Ảnh sản phẩm" : "Tải ảnh sản phẩm lên"}
-              </p>
+            {/* ẢNH PHỤ */}
+            <div className="flex flex-wrap gap-3">
+              {imagePreviews.slice(1).map((preview, index) => (
+                <div
+                  key={preview + index}
+                  className="relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                >
+                  <img
+                    src={preview}
+                    alt={`Ảnh sản phẩm ${index + 2}`}
+                    className="h-full w-full object-contain"
+                  />
 
-              <p className="mt-1 text-xs text-slate-400">JPG, PNG, WEBP</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const actualIndex = index + 1;
+                      removeImage(actualIndex);
+                    }}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white hover:bg-red-500"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
 
-              {uploading && (
-                <p className="mt-2 text-xs text-blue-600">
-                  Đang tải ảnh lên...
-                </p>
+              {/* Ô thêm ảnh */}
+              {imagePreviews.length < 6 && (
+                <label
+                  htmlFor="product-image"
+                  className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-blue-400 hover:bg-blue-50"
+                >
+                  <div className="text-center">
+                    <div className="text-2xl">+</div>
+
+                    <div className="mt-1 text-xs">Thêm ảnh</div>
+                  </div>
+                </label>
               )}
             </div>
+          </div>
+
+          <div className="mt-3">
+            <p className="text-xs text-slate-500">
+              Tối đa 6 ảnh. Ảnh đầu tiên sẽ được sử dụng làm ảnh chính.
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">JPG, PNG, WEBP</p>
+
+            {uploading && (
+              <p className="mt-2 text-xs text-blue-600">Đang tải ảnh lên...</p>
+            )}
           </div>
         </div>
 
@@ -493,6 +589,11 @@ export default function ProductForm({
             ))}
           </div>
         </div>
+        {formError && (
+          <div className="mt-5 mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+            ⚠️ {formError}
+          </div>
+        )}
 
         {/* BUTTON */}
         <div className="mt-6 flex justify-end gap-2">
