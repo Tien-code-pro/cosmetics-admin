@@ -46,3 +46,56 @@ select,
 textarea {
   font: inherit;
 }
+
+.rich-text-editor {
+  width: 100%;
+}
+
+.rich-text-editor .ck-editor__editable {
+  min-height: 300px;
+  padding: 16px 20px;
+}
+
+.rich-text-editor .ck-editor__editable_inline {
+  min-height: 300px;
+}
+
+.rich-text-editor .ck-content {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.rich-text-editor .ck-content p {
+  margin: 0 0 10px;
+}
+
+.rich-text-editor .ck-content h1 {
+  font-size: 32px;
+}
+
+.rich-text-editor .ck-content h2 {
+  font-size: 26px;
+}
+
+.rich-text-editor .ck-content h3 {
+  font-size: 22px;
+}
+.rich-text-editor {
+  width: 100%;
+}
+
+.rich-text-editor .ck-editor__editable_inline {
+  min-height: 300px;
+}
+
+.rich-text-editor .ck-content {
+  min-height: 300px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.rich-text-editor .ck-editor__editable {
+  min-height: 100px;
+  max-height: 350px;
+  overflow-y: auto;
+}
