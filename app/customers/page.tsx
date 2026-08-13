@@ -3,15 +3,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 
-type Customer = {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
 const initialForm = {
   name: "",
   email: "",
@@ -145,6 +136,46 @@ export default function CustomersPage() {
         error instanceof Error
           ? error.message
           : "Có lỗi xảy ra khi xóa khách hàng",
+      );
+    }
+  };
+
+  const handleToggleStatus = async (customer: Customer) => {
+    const nextStatus = !customer.isActive;
+
+    const message = nextStatus
+      ? "Bạn có chắc muốn mở khóa khách hàng này?"
+      : "Bạn có chắc muốn khóa khách hàng này?";
+
+    if (!confirm(message)) {
+      return;
+    }
+
+    try {
+      const updatedCustomer = await api.patch(
+        `/customers/${customer.id}/status`,
+        {
+          isActive: nextStatus,
+        },
+      );
+
+      setCustomers((prev) =>
+        prev.map((item) =>
+          item.id === customer.id
+            ? {
+                ...item,
+                isActive: updatedCustomer.isActive,
+              }
+            : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Lỗi cập nhật trạng thái khách hàng:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Có lỗi xảy ra khi cập nhật trạng thái khách hàng",
       );
     }
   };
@@ -484,10 +515,17 @@ export default function CustomersPage() {
                       {/* Status */}
 
                       <td className="px-6 py-5">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Hoạt động
-                        </span>
+                        {customer.isActive ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            Hoạt động
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                            Đã khóa
+                          </span>
+                        )}
                       </td>
 
                       {/* Actions */}
@@ -500,6 +538,22 @@ export default function CustomersPage() {
                           >
                             ✏️
                             <span>Sửa</span>
+                          </button>
+
+                          {/* Khóa / Mở khóa */}
+                          <button
+                            onClick={() => handleToggleStatus(customer)}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition ${
+                              customer.isActive
+                                ? "border-amber-100 bg-white text-amber-600 hover:bg-amber-50"
+                                : "border-emerald-100 bg-white text-emerald-600 hover:bg-emerald-50"
+                            }`}
+                          >
+                            {customer.isActive ? "🔒" : "🔓"}
+
+                            <span>
+                              {customer.isActive ? "Khóa" : "Mở khóa"}
+                            </span>
                           </button>
 
                           <button

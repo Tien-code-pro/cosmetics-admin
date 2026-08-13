@@ -34,14 +34,6 @@ export default function AdminsPage() {
     loadAdmins();
   }, []);
 
-  useEffect(() => {
-    if (!isAdmin()) {
-      router.replace("/");
-      return;
-    }
-    loadAdmins();
-  }, []);
-
   const loadAdmins = async () => {
     try {
       setLoading(true);
@@ -76,19 +68,41 @@ export default function AdminsPage() {
   };
 
   const toggleActive = async (admin: Admin) => {
+    const newIsActive = !admin.isActive;
+
+    // Cập nhật ngay trên UI
+    setAdmins((prev) =>
+      prev.map((a) =>
+        a.id === admin.id ? { ...a, isActive: newIsActive } : a,
+      ),
+    );
+
     try {
-      await api.patch(`/admins/${admin.id}`, { isActive: !admin.isActive });
-      await loadAdmins();
+      await api.patch(`/admins/${admin.id}`, { isActive: newIsActive });
     } catch (err: any) {
+      // Lỗi thì trả lại trạng thái cũ
+      setAdmins((prev) =>
+        prev.map((a) =>
+          a.id === admin.id ? { ...a, isActive: admin.isActive } : a,
+        ),
+      );
       alert(err.message || "Không thể cập nhật");
     }
   };
 
   const changeRole = async (admin: Admin, role: "ADMIN" | "STAFF") => {
+    const oldRole = admin.role;
+
+    setAdmins((prev) =>
+      prev.map((a) => (a.id === admin.id ? { ...a, role } : a)),
+    );
+
     try {
       await api.patch(`/admins/${admin.id}`, { role });
-      await loadAdmins();
     } catch (err: any) {
+      setAdmins((prev) =>
+        prev.map((a) => (a.id === admin.id ? { ...a, role: oldRole } : a)),
+      );
       alert(err.message || "Không thể cập nhật");
     }
   };
