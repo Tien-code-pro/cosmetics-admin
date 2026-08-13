@@ -3,22 +3,79 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import Link from "next/link";
+import { useDebounce } from "@/hooks/useDebounce";
+import CategoryList from "@/components/categories/CategoryList";
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  status: "active" | "inactive";
+};
+
+const initialMeta = {
+  total: 0,
+  page: 1,
+  limit: 10,
+  totalPages: 1,
+};
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // =========================
+  // FORM
+  // =========================
+
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // =========================
+  // UI
+  // =========================
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // =========================
+  // SEARCH / FILTER / PAGINATION
+  // =========================
+
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const [page, setPage] = useState(1);
+
+  const [meta, setMeta] = useState(initialMeta);
+
+  // =========================
+  // LOAD DATA
+  // =========================
 
   const loadCategories = async () => {
     try {
       setLoading(true);
 
-      const data = await api.get("/categories");
+      const params = new URLSearchParams();
 
-      setCategories(data);
+      params.set("page", String(page));
+      params.set("limit", "10");
+
+      if (debouncedSearch) {
+        params.set("search", debouncedSearch);
+      }
+
+      if (statusFilter) {
+        params.set("status", statusFilter);
+      }
+
+      const res = await api.get(`/categories?${params.toString()}`);
+
+      setCategories(res.data);
+      setMeta(res.meta);
     } catch (error) {
       console.error("Lỗi lấy danh mục:", error);
     } finally {
@@ -28,7 +85,11 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     loadCategories();
-  }, []);
+  }, [page, debouncedSearch, statusFilter]);
+
+  // =========================
+  // FORM
+  // =========================
 
   const resetForm = () => {
     setName("");
@@ -55,28 +116,40 @@ export default function CategoriesPage() {
       }
 
       resetForm();
+
       await loadCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi lưu danh mục:", error);
+
+      alert(error.message || "Không thể lưu danh mục");
     } finally {
       setSubmitting(false);
     }
   };
+
+  // =========================
+  // EDIT
+  // =========================
 
   const handleEdit = (category: Category) => {
     setEditingId(category.id);
     setName(category.name);
     setSlug(category.slug);
 
-    // Cuộn lên đầu để sửa
     window.scrollTo({
       top: 0,
       behavior: "smooth",
     });
   };
 
+  // =========================
+  // DELETE
+  // =========================
+
   const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa danh mục này?")) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa danh mục này?")) {
+      return;
+    }
 
     try {
       await api.delete(`/categories/${id}`);
@@ -85,37 +158,96 @@ export default function CategoriesPage() {
         resetForm();
       }
 
+      /*
+       * Nếu xóa item cuối cùng của page hiện tại
+       * thì lùi về page trước.
+       */
+      if (categories.length === 1 && page > 1) {
+        setPage((prev) => prev - 1);
+        return;
+      }
+
       await loadCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi xóa danh mục:", error);
+
+      alert(error.message || "Không thể xóa danh mục");
     }
   };
+
+  // =========================
+  // TOGGLE STATUS
+  // =========================
 
   const toggleStatus = async (category: Category) => {
     const newStatus = category.status === "active" ? "inactive" : "active";
 
-    // Cập nhật ngay trên giao diện — không cần chờ API, không có cảm giác load lại
+    // Optimistic update
     setCategories((prev) =>
-      prev.map((c) => (c.id === category.id ? { ...c, status: newStatus } : c)),
+      prev.map((item) =>
+        item.id === category.id
+          ? {
+              ...item,
+              status: newStatus,
+            }
+          : item,
+      ),
     );
 
     try {
-      await api.patch(`/categories/${category.id}`, { status: newStatus });
+      await api.patch(`/categories/${category.id}`, {
+        status: newStatus,
+      });
     } catch (error: any) {
-      // Nếu API lỗi, tự động trả lại trạng thái cũ
+      // Rollback
       setCategories((prev) =>
-        prev.map((c) =>
-          c.id === category.id ? { ...c, status: category.status } : c,
+        prev.map((item) =>
+          item.id === category.id
+            ? {
+                ...item,
+                status: category.status,
+              }
+            : item,
         ),
       );
+
       alert(error.message || "Không thể cập nhật trạng thái");
     }
   };
 
+  // =========================
+  // SEARCH
+  // =========================
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+
+    // Search mới -> quay về page 1
+    setPage(1);
+  };
+
+  // =========================
+  // STATUS FILTER
+  // =========================
+
+  const handleStatusFilterChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    setStatusFilter(e.target.value);
+
+    // Filter mới -> quay về page 1
+    setPage(1);
+  };
+
+  // =========================
+  // RENDER
+  // =========================
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-7xl">
-        {/* Header */}
+        {/* ================= HEADER ================= */}
+
         <div className="mb-8">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-xl shadow-sm">
@@ -134,7 +266,8 @@ export default function CategoriesPage() {
           </div>
         </div>
 
-        {/* Form */}
+        {/* ================= FORM ================= */}
+
         <div
           className={`mb-8 rounded-2xl border bg-white p-6 shadow-sm ${
             editingId
@@ -166,7 +299,8 @@ export default function CategoriesPage() {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_1fr_auto]"
           >
-            {/* Name */}
+            {/* NAME */}
+
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Tên danh mục
@@ -182,7 +316,8 @@ export default function CategoriesPage() {
               />
             </div>
 
-            {/* Slug */}
+            {/* SLUG */}
+
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Slug
@@ -198,7 +333,8 @@ export default function CategoriesPage() {
               />
             </div>
 
-            {/* Buttons */}
+            {/* BUTTONS */}
+
             <div className="flex items-end gap-2">
               <button
                 type="submit"
@@ -230,178 +366,41 @@ export default function CategoriesPage() {
           </form>
         </div>
 
-        {/* Table Card */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {/* Table Header */}
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Danh sách danh mục
-              </h2>
+        {/* ================= SEARCH / FILTER ================= */}
 
-              <p className="mt-1 text-sm text-slate-500">
-                {loading
-                  ? "Đang tải dữ liệu..."
-                  : `${categories.length} danh mục`}
-              </p>
-            </div>
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <input
+            type="text"
+            placeholder="Tìm theo tên hoặc slug..."
+            value={search}
+            onChange={handleSearchChange}
+            className="h-10 min-w-[220px] flex-1 rounded-lg border border-slate-300 px-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
 
-            <div className="flex items-center gap-3">
-              <Link
-                href="/trash"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-              >
-                🗑️
-                <span>Thùng rác</span>
-              </Link>
+          <select
+            value={statusFilter}
+            onChange={handleStatusFilterChange}
+            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-blue-500"
+          >
+            <option value="">Tất cả trạng thái</option>
 
-              {!loading && categories.length > 0 && (
-                <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
-                  {categories.length} danh mục
-                </div>
-              )}
-            </div>
-          </div>
+            <option value="active">Hoạt động</option>
 
-          {/* Loading */}
-          {loading ? (
-            <div className="divide-y divide-slate-100">
-              {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="flex items-center gap-6 px-6 py-5">
-                  <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                  <div className="h-4 w-48 animate-pulse rounded bg-slate-200" />
-                  <div className="ml-auto h-9 w-28 animate-pulse rounded bg-slate-200" />
-                </div>
-              ))}
-            </div>
-          ) : categories.length === 0 ? (
-            /* Empty */
-            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-3xl">
-                📂
-              </div>
-
-              <h3 className="text-base font-semibold text-slate-900">
-                Chưa có danh mục
-              </h3>
-
-              <p className="mt-1 max-w-sm text-sm text-slate-500">
-                Hãy thêm danh mục đầu tiên để bắt đầu quản lý sản phẩm.
-              </p>
-            </div>
-          ) : (
-            /* Table */
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Tên danh mục
-                    </th>
-
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Slug
-                    </th>
-
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Trạng thái
-                    </th>
-
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Hành động
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {categories.map((category) => (
-                    <tr
-                      key={category.id}
-                      className="group transition hover:bg-slate-50"
-                    >
-                      {/* Name */}
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-lg">
-                            📁
-                          </div>
-
-                          <div>
-                            <p className="font-medium text-slate-900">
-                              {category.name}
-                            </p>
-
-                            <p className="mt-0.5 text-xs text-slate-400">
-                              ID: {category.id.slice(0, 8)}...
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Slug */}
-                      <td className="px-6 py-5">
-                        <code className="rounded-md bg-slate-100 px-2.5 py-1.5 text-sm text-slate-600">
-                          {category.slug}
-                        </code>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-5">
-                        <button
-                          onClick={() => toggleStatus(category)}
-                          className={`cursor-pointer inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                            category.status === "active"
-                              ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${category.status === "active" ? "bg-emerald-500" : "bg-slate-400"}`}
-                          />
-                          {category.status === "active" ? "Hoạt động" : "Đã ẩn"}
-                        </button>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-6 py-5">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(category)}
-                            className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                          >
-                            ✏️
-                            <span>Sửa</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleDelete(category.id)}
-                            className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-white px-3.5 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                          >
-                            🗑️
-                            <span>Xóa</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Footer */}
-          {!loading && categories.length > 0 && (
-            <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
-              <p className="text-sm text-slate-500">
-                Tổng cộng{" "}
-                <span className="font-semibold text-slate-700">
-                  {categories.length}
-                </span>{" "}
-                danh mục
-              </p>
-            </div>
-          )}
+            <option value="inactive">Đã ẩn</option>
+          </select>
         </div>
+
+        {/* ================= LIST ================= */}
+
+        <CategoryList
+          categories={categories}
+          loading={loading}
+          meta={meta}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onToggleStatus={toggleStatus}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

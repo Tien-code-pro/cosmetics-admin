@@ -7,6 +7,7 @@ import { Category, Product, Spec } from "@/type/product";
 import ProductForm from "@/components/products/ProductForm";
 import ProductList from "@/components/products/ProductList";
 import ProductViewModal from "@/components/products/ProductViewModal";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const initialForm = {
   name: "",
@@ -28,32 +29,95 @@ const initialForm = {
 
 type FormData = typeof initialForm;
 
+type ProductMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+const initialMeta: ProductMeta = {
+  total: 0,
+  page: 1,
+  limit: 10,
+  totalPages: 1,
+};
+
 export default function ProductsPage() {
+  // =========================
+  // DATA
+  // =========================
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // =========================
+  // UI STATE
+  // =========================
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Sản phẩm đang sửa
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // Sản phẩm đang xem
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
   const [formResetKey, setFormResetKey] = useState(0);
+
+  // =========================
+  // SEARCH / FILTER
+  // =========================
+
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  // =========================
+  // PAGINATION
+  // =========================
+
+  const [page, setPage] = useState(1);
+
+  const [meta, setMeta] = useState<ProductMeta>(initialMeta);
+
+  // =========================
+  // LOAD DATA
+  // =========================
 
   const loadData = async () => {
     try {
       setLoading(true);
 
-      const [productsData, categoriesData] = await Promise.all([
-        api.get("/products"),
-        api.get("/categories"),
+      const params = new URLSearchParams();
+
+      params.set("page", String(page));
+      params.set("limit", "10");
+
+      if (debouncedSearch) {
+        params.set("search", debouncedSearch);
+      }
+
+      if (categoryFilter) {
+        params.set("categoryId", categoryFilter);
+      }
+
+      if (statusFilter) {
+        params.set("status", statusFilter);
+      }
+
+      const [productsRes, categoriesRes] = await Promise.all([
+        api.get(`/products?${params.toString()}`),
+        api.get("/categories?limit=100"),
       ]);
 
-      setProducts(productsData);
-      setCategories(categoriesData);
+      // Products
+      setProducts(productsRes.data);
+      setMeta(productsRes.meta);
+
+      // Categories dùng cho dropdown/filter
+      setCategories(categoriesRes.data);
     } catch (error) {
       console.error("Lỗi lấy dữ liệu:", error);
     } finally {
@@ -63,7 +127,32 @@ export default function ProductsPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page, debouncedSearch, categoryFilter, statusFilter]);
+
+  // =========================
+  // SEARCH / FILTER HANDLERS
+  // =========================
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+
+    // Search mới => quay về trang đầu
+    setPage(1);
+  };
+
+  const handleCategoryFilterChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    setCategoryFilter(e.target.value);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    setStatusFilter(e.target.value);
+    setPage(1);
+  };
 
   // =========================
   // UPLOAD IMAGE
@@ -96,7 +185,7 @@ export default function ProductsPage() {
   };
 
   // =========================
-  // CREATE / UPDATE
+  // CREATE / UPDATE PRODUCT
   // =========================
 
   const handleSubmitProduct = async ({
@@ -113,10 +202,7 @@ export default function ProductsPage() {
     try {
       setSubmitting(true);
 
-      // =========================
-      // UPLOAD TẤT CẢ ẢNH
-      // =========================
-
+      // Upload ảnh
       let imageUrls: string[] = [];
 
       if (imageFiles.length > 0) {
@@ -125,10 +211,7 @@ export default function ProductsPage() {
         );
       }
 
-      // =========================
-      // SPECIFICATIONS
-      // =========================
-
+      // Specifications
       const specifications = specs.reduce(
         (acc, { key, value }) => {
           if (key.trim()) {
@@ -140,45 +223,52 @@ export default function ProductsPage() {
         {} as Record<string, string>,
       );
 
-      // =========================
-      // PAYLOAD
-      // =========================
-
+      // Payload
       const finalImages = [...existingImages, ...imageUrls];
 
       const payload = {
         name: form.name,
         slug: form.slug,
         sku: form.sku,
+
         price: Number(form.price),
+
         originalPrice: form.originalPrice
           ? Number(form.originalPrice)
           : undefined,
+
         stock: Number(form.stock) || 0,
 
         categoryId: form.categoryId || undefined,
 
         shortDescription: form.shortDescription || undefined,
+
         description: form.description || undefined,
+
         ingredients: form.ingredients || undefined,
+
         usageInstructions: form.usageInstructions || undefined,
+
         brand: form.brand || undefined,
+
         origin: form.origin || undefined,
 
         ...(Object.keys(specifications).length ? { specifications } : {}),
 
         images: finalImages,
+
         skinType: form.skinType.length > 0 ? form.skinType : undefined,
-        status: form.isActive ? "active" : "inactive", // thêm dòng này
+
+        status: form.isActive ? "active" : "inactive",
       };
 
-      // =========================
-      // CREATE / UPDATE
-      // =========================
-
+      // Update
       if (editingProduct) {
         await api.patch(`/products/${editingProduct.id}`, payload);
-      } else {
+      }
+
+      // Create
+      else {
         await api.post("/products", payload);
       }
 
@@ -186,6 +276,10 @@ export default function ProductsPage() {
       setFormResetKey((prev) => prev + 1);
 
       await loadData();
+    } catch (error) {
+      console.error("Lỗi lưu sản phẩm:", error);
+
+      alert(error instanceof Error ? error.message : "Không thể lưu sản phẩm");
     } finally {
       setSubmitting(false);
     }
@@ -207,31 +301,67 @@ export default function ProductsPage() {
         setEditingProduct(null);
       }
 
-      await loadData();
+      // Nếu xóa sản phẩm cuối cùng của page
+      // thì quay về page trước
+      if (products.length === 1 && page > 1) {
+        setPage((prev) => prev - 1);
+      } else {
+        await loadData();
+      }
     } catch (error) {
       console.error("Lỗi xóa sản phẩm:", error);
+
+      alert(error instanceof Error ? error.message : "Không thể xóa sản phẩm");
     }
   };
+
+  // =========================
+  // TOGGLE STATUS
+  // =========================
 
   const handleToggleStatus = async (product: Product) => {
     const newStatus = product.status === "active" ? "inactive" : "active";
 
-    // Cập nhật ngay trên UI, không load lại toàn bộ (giống Category)
+    // Optimistic UI
     setProducts((prev) =>
-      prev.map((p) => (p.id === product.id ? { ...p, status: newStatus } : p)),
+      prev.map((p) =>
+        p.id === product.id
+          ? {
+              ...p,
+              status: newStatus,
+            }
+          : p,
+      ),
     );
 
     try {
-      await api.patch(`/products/${product.id}`, { status: newStatus });
-    } catch (error: any) {
+      await api.patch(`/products/${product.id}`, {
+        status: newStatus,
+      });
+    } catch (error) {
+      // Rollback
       setProducts((prev) =>
         prev.map((p) =>
-          p.id === product.id ? { ...p, status: product.status } : p,
+          p.id === product.id
+            ? {
+                ...p,
+                status: product.status,
+              }
+            : p,
         ),
       );
-      alert(error.message || "Không thể cập nhật trạng thái");
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Không thể cập nhật trạng thái",
+      );
     }
   };
+
+  // =========================
+  // RENDER
+  // =========================
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -267,11 +397,20 @@ export default function ProductsPage() {
           key={formResetKey}
         />
 
-        {/* LIST */}
+        {/* PRODUCT LIST */}
 
         <ProductList
           products={products}
+          categories={categories}
           loading={loading}
+          search={search}
+          categoryFilter={categoryFilter}
+          statusFilter={statusFilter}
+          meta={meta}
+          onSearchChange={handleSearchChange}
+          onCategoryFilterChange={handleCategoryFilterChange}
+          onStatusFilterChange={handleStatusFilterChange}
+          onPageChange={setPage}
           onView={(product) => setViewingProduct(product)}
           onEdit={(product) => setEditingProduct(product)}
           onDelete={handleDelete}
