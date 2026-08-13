@@ -23,6 +23,7 @@ const initialForm = {
   origin: "",
   originalPrice: "",
   skinType: [] as string[],
+  isActive: true,
 };
 
 type FormData = typeof initialForm;
@@ -168,6 +169,7 @@ export default function ProductsPage() {
 
         images: finalImages,
         skinType: form.skinType.length > 0 ? form.skinType : undefined,
+        status: form.isActive ? "active" : "inactive", // thêm dòng này
       };
 
       // =========================
@@ -208,6 +210,26 @@ export default function ProductsPage() {
       await loadData();
     } catch (error) {
       console.error("Lỗi xóa sản phẩm:", error);
+    }
+  };
+
+  const handleToggleStatus = async (product: Product) => {
+    const newStatus = product.status === "active" ? "inactive" : "active";
+
+    // Cập nhật ngay trên UI, không load lại toàn bộ (giống Category)
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, status: newStatus } : p)),
+    );
+
+    try {
+      await api.patch(`/products/${product.id}`, { status: newStatus });
+    } catch (error: any) {
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, status: product.status } : p,
+        ),
+      );
+      alert(error.message || "Không thể cập nhật trạng thái");
     }
   };
 
@@ -253,6 +275,7 @@ export default function ProductsPage() {
           onView={(product) => setViewingProduct(product)}
           onEdit={(product) => setEditingProduct(product)}
           onDelete={handleDelete}
+          onToggleStatus={handleToggleStatus}
         />
 
         {/* VIEW MODAL */}

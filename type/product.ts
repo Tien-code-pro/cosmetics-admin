@@ -28,4 +28,5 @@ export type Product = {
   originalPrice: number | null;
   skinType: string[];
   deletedAt?: string | null;
+  status: "active" | "inactive"; // thêm dòng này
 };

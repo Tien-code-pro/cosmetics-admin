@@ -91,6 +91,27 @@ export default function CategoriesPage() {
     }
   };
 
+  const toggleStatus = async (category: Category) => {
+    const newStatus = category.status === "active" ? "inactive" : "active";
+
+    // Cập nhật ngay trên giao diện — không cần chờ API, không có cảm giác load lại
+    setCategories((prev) =>
+      prev.map((c) => (c.id === category.id ? { ...c, status: newStatus } : c)),
+    );
+
+    try {
+      await api.patch(`/categories/${category.id}`, { status: newStatus });
+    } catch (error: any) {
+      // Nếu API lỗi, tự động trả lại trạng thái cũ
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === category.id ? { ...c, status: category.status } : c,
+        ),
+      );
+      alert(error.message || "Không thể cập nhật trạng thái");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-7xl">
@@ -326,10 +347,19 @@ export default function CategoriesPage() {
 
                       {/* Status */}
                       <td className="px-6 py-5">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Hoạt động
-                        </span>
+                        <button
+                          onClick={() => toggleStatus(category)}
+                          className={`cursor-pointer inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                            category.status === "active"
+                              ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${category.status === "active" ? "bg-emerald-500" : "bg-slate-400"}`}
+                          />
+                          {category.status === "active" ? "Hoạt động" : "Đã ẩn"}
+                        </button>
                       </td>
 
                       {/* Actions */}
@@ -337,7 +367,7 @@ export default function CategoriesPage() {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleEdit(category)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                            className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                           >
                             ✏️
                             <span>Sửa</span>
@@ -345,7 +375,7 @@ export default function CategoriesPage() {
 
                           <button
                             onClick={() => handleDelete(category.id)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-white px-3.5 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                            className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-white px-3.5 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
                           >
                             🗑️
                             <span>Xóa</span>
