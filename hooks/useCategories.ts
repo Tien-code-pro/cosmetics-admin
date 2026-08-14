@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/app/lib/api";
 import { useDebounce } from "@/hooks/useDebounce";
+import { toast } from "sonner";
+import { ApiError } from "next/dist/server/api-utils";
 
 export type Category = {
   id: string;
@@ -86,7 +88,12 @@ export function useCategories() {
       setCategories(res.data || []);
       setMeta(res.meta || initialMeta);
     } catch (error) {
-      console.error("Lỗi lấy danh mục:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }

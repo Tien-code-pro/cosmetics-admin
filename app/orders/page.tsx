@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 
 import { Order, OrderStatus, PaymentMethod, PaymentStatus } from "@/type/order";
 
 import OrderStats from "@/components/orders/OrderStats";
 import OrderTable from "@/components/orders/OrderTable";
 import OrderDetailModal from "@/components/orders/OrderDetailModal";
+import { toast } from "sonner";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -72,7 +73,12 @@ export default function OrdersPage() {
         totalCustomers: Number(result.totalCustomers || 0),
       });
     } catch (error) {
-      console.error("Lỗi lấy thống kê đơn hàng:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     }
   };
 
@@ -118,13 +124,19 @@ export default function OrdersPage() {
         },
       );
     } catch (error) {
-      console.error("Lỗi lấy danh sách đơn hàng:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Không thể lấy danh sách đơn hàng",
-      );
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      // console.error("Lỗi lấy danh sách đơn hàng:", error);
+
+      // alert(
+      //   error instanceof Error
+      //     ? error.message
+      //     : "Không thể lấy danh sách đơn hàng",
+      // );
 
       setOrders([]);
     } finally {
@@ -162,13 +174,19 @@ export default function OrdersPage() {
       // Cập nhật lại thống kê từ BE
       await loadStats();
     } catch (error) {
-      console.error("Lỗi cập nhật trạng thái đơn hàng:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Không thể cập nhật trạng thái đơn hàng",
-      );
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      // console.error("Lỗi cập nhật trạng thái đơn hàng:", error);
+
+      // alert(
+      //   error instanceof Error
+      //     ? error.message
+      //     : "Không thể cập nhật trạng thái đơn hàng",
+      // );
     }
   };
 
@@ -201,13 +219,19 @@ export default function OrdersPage() {
       // Cập nhật lại thống kê từ BE
       await loadStats();
     } catch (error) {
-      console.error("Lỗi cập nhật trạng thái thanh toán:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Không thể cập nhật trạng thái thanh toán",
-      );
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      // console.error("Lỗi cập nhật trạng thái thanh toán:", error);
+
+      // alert(
+      //   error instanceof Error
+      //     ? error.message
+      //     : "Không thể cập nhật trạng thái thanh toán",
+      // );
     }
   };
 

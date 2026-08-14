@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { Category, Product, Spec } from "@/type/product";
 
 import ProductForm from "@/components/products/ProductForm";
 import ProductList from "@/components/products/ProductList";
 import ProductViewModal from "@/components/products/ProductViewModal";
 import { useDebounce } from "@/hooks/useDebounce";
+import { toast } from "sonner";
 
 const initialForm = {
   name: "",
@@ -119,7 +120,12 @@ export default function ProductsPage() {
       // Categories dùng cho dropdown/filter
       setCategories(categoriesRes.data);
     } catch (error) {
-      console.error("Lỗi lấy dữ liệu:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -277,9 +283,14 @@ export default function ProductsPage() {
 
       await loadData();
     } catch (error) {
-      console.error("Lỗi lưu sản phẩm:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(error instanceof Error ? error.message : "Không thể lưu sản phẩm");
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+
+      // alert(error instanceof Error ? error.message : "Không thể lưu sản phẩm");
     } finally {
       setSubmitting(false);
     }
@@ -309,9 +320,15 @@ export default function ProductsPage() {
         await loadData();
       }
     } catch (error) {
-      console.error("Lỗi xóa sản phẩm:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(error instanceof Error ? error.message : "Không thể xóa sản phẩm");
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      // console.error("Lỗi xóa sản phẩm:", error);
+
+      // alert(error instanceof Error ? error.message : "Không thể xóa sản phẩm");
     }
   };
 
@@ -350,12 +367,17 @@ export default function ProductsPage() {
             : p,
         ),
       );
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Không thể cập nhật trạng thái",
-      );
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      // alert(
+      //   error instanceof Error
+      //     ? error.message
+      //     : "Không thể cập nhật trạng thái",
+      // );
     }
   };
 

@@ -1,12 +1,65 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+export class ApiError extends Error {
+  statusCode: number;
+  data?: unknown;
+
+  constructor(message: string, statusCode: number, data?: unknown) {
+    super(message);
+
+    this.name = "ApiError";
+    this.statusCode = statusCode;
+    this.data = data;
+  }
+}
+
 function getToken() {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
 
   return localStorage.getItem("access_token");
 }
 
-async function request(path: string, options: RequestInit = {}) {
+function getErrorMessage(data: any, fallback: string) {
+  if (!data) {
+    return fallback;
+  }
+
+  // NestJS ValidationPipe
+  // message: ["email must be an email", "password must be ..."]
+  if (Array.isArray(data.message)) {
+    return data.message.join(", ");
+  }
+
+  // Backend chuẩn:
+  // { statusCode: 409, message: "Email đã tồn tại..." }
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message;
+  }
+
+  // Fallback nếu backend chỉ trả error
+  if (typeof data.error === "string" && data.error.trim()) {
+    return data.error;
+  }
+
+  return fallback;
+}
+
+async function parseResponse(res: Response) {
+  const contentType = res.headers.get("content-type");
+
+  if (contentType?.includes("application/json")) {
+    return res.json().catch(() => null);
+  }
+
+  return res.text().catch(() => null);
+}
+
+async function request<T = any>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const token = getToken();
 
   const res = await fetch(`${API_URL}${path}`, {
@@ -24,54 +77,99 @@ async function request(path: string, options: RequestInit = {}) {
     },
   });
 
+  // =========================
+  // 204 - No Content
+  // =========================
+  if (res.status === 204) {
+    return null as T;
+  }
+
+  const data = await parseResponse(res);
+
+  // =========================
+  // 401 - Unauthorized
+  // =========================
   if (res.status === 401) {
-    // Chỉ coi là "hết phiên" khi ĐÃ có token mà vẫn bị từ chối.
-    // Nếu chưa có token (ví dụ đang gọi /auth/login), 401 chỉ là lỗi sai thông tin đăng nhập bình thường.
+    /*
+     * Có token nhưng token không còn hợp lệ
+     */
     if (token && typeof window !== "undefined") {
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
+
       window.location.href = "/login";
-      throw new Error("Phiên đăng nhập đã hết hạn");
+
+      throw new ApiError("Phiên đăng nhập đã hết hạn", 401, data);
     }
 
-    const error = await res
-      .json()
-      .catch(() => ({ message: "Sai email hoặc mật khẩu" }));
-    throw new Error(error.message || "Sai email hoặc mật khẩu");
+    /*
+     * Không có token
+     *
+     * Trường hợp phổ biến:
+     * POST /auth/login
+     * -> Sai email hoặc mật khẩu
+     */
+    throw new ApiError(
+      getErrorMessage(data, "Sai email hoặc mật khẩu"),
+      401,
+      data,
+    );
   }
 
+  // =========================
+  // 403 - Forbidden
+  // =========================
   if (res.status === 403) {
-    throw new Error("Bạn không có quyền thực hiện thao tác này");
+    throw new ApiError(
+      getErrorMessage(data, "Bạn không có quyền thực hiện thao tác này"),
+      403,
+      data,
+    );
   }
 
+  // =========================
+  // 400 / 404 / 409 / 422 / 500...
+  // =========================
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-
-    throw new Error(error.message || "Có lỗi xảy ra");
+    throw new ApiError(
+      getErrorMessage(data, "Có lỗi xảy ra. Vui lòng thử lại."),
+      res.status,
+      data,
+    );
   }
 
-  if (res.status === 204) return null;
-
-  return res.json();
+  // =========================
+  // Success
+  // =========================
+  return data as T;
 }
 
 export const api = {
-  get: (path: string) => request(path),
+  get: <T = any>(path: string) =>
+    request<T>(path, {
+      method: "GET",
+    }),
 
-  post: (path: string, body: any) =>
-    request(path, {
+  post: <T = any>(path: string, body?: unknown) =>
+    request<T>(path, {
       method: "POST",
-      body: JSON.stringify(body),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  patch: (path: string, body: any) =>
-    request(path, {
+  patch: <T = any>(path: string, body?: unknown) =>
+    request<T>(path, {
       method: "PATCH",
-      body: JSON.stringify(body),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  delete: (path: string) =>
-    request(path, {
+  put: <T = any>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "PUT",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+
+  delete: <T = any>(path: string) =>
+    request<T>(path, {
       method: "DELETE",
     }),
 };

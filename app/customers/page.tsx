@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { useDebounce } from "@/hooks/useDebounce";
 
 import CustomerStats from "@/components/customers/CustomerStats";
 import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerFilter from "@/components/customers/CustomerFilter";
 import CustomerList, { Customer } from "@/components/customers/CustomerList";
+import { toast } from "sonner";
 
 const initialForm = {
   name: "",
@@ -93,7 +94,12 @@ export default function CustomersPage() {
         locked: Number(res.locked || 0),
       });
     } catch (error) {
-      console.error("Lỗi lấy thống kê khách hàng:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setStatsLoading(false);
     }
@@ -126,7 +132,12 @@ export default function CustomersPage() {
 
       setMeta(res.meta || initialMeta);
     } catch (error) {
-      console.error("Lỗi lấy danh sách khách hàng:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -210,13 +221,18 @@ export default function CustomersPage() {
 
       await Promise.all([loadCustomers(), loadStats()]);
     } catch (error) {
-      console.error("Lỗi lưu khách hàng:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Có lỗi xảy ra khi lưu khách hàng",
-      );
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+
+      // alert(
+      //   error instanceof Error
+      //     ? error.message
+      //     : "Có lỗi xảy ra khi lưu khách hàng",
+      // );
     } finally {
       setSubmitting(false);
     }
@@ -282,13 +298,19 @@ export default function CustomersPage() {
         locked: nextStatus ? prev.locked - 1 : prev.locked + 1,
       }));
     } catch (error) {
-      console.error("Lỗi cập nhật trạng thái khách hàng:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Có lỗi xảy ra khi cập nhật trạng thái khách hàng",
-      );
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      // console.error("Lỗi cập nhật trạng thái khách hàng:", error);
+
+      // alert(
+      //   error instanceof Error
+      //     ? error.message
+      //     : "Có lỗi xảy ra khi cập nhật trạng thái khách hàng",
+      // );
     }
   };
 

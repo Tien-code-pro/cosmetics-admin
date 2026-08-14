@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "./lib/api";
+import { api, ApiError } from "./lib/api";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
 import StatsCards from "@/components/dashboard/StatsCards";
 import RevenueCard from "@/components/dashboard/RevenueCard";
 import QuickActions from "@/components/dashboard/QuickActions";
 import RecentOrders from "@/components/dashboard/RecentOrders";
+import { toast } from "sonner";
 
 type DashboardData = {
   categoriesTotal: number;
@@ -86,7 +87,12 @@ export default function Home() {
         totalRevenue: Number(stats.totalRevenue || 0),
       });
     } catch (error) {
-      console.error("Không thể tải dashboard:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
+import { toast } from "sonner";
 
 type TrashType = "product" | "category";
 
@@ -60,7 +61,12 @@ export default function TrashPage() {
 
       setItems(allItems);
     } catch (error) {
-      console.error("Lỗi tải thùng rác:", error);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }

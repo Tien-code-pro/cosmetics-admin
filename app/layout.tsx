@@ -2,6 +2,7 @@ import "./globals.css";
 
 import AppShell from "../components/AppShell";
 import { AuthProvider } from "@/components/AuthContext";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -13,6 +14,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <AppShell>{children}</AppShell>
+          <Toaster position="top-right" richColors />
         </AuthProvider>
       </body>
     </html>
