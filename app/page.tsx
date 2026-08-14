@@ -5,18 +5,40 @@ import { useEffect, useState } from "react";
 import { api } from "./lib/api";
 
 type DashboardData = {
-  categories: any[];
+  categoriesTotal: number;
+  productsTotal: number;
   products: any[];
-  customers: any[];
   orders: any[];
+};
+
+type OrderStats = {
+  totalOrders: number;
+  totalRevenue: number;
+};
+
+type CustomerStats = {
+  total: number;
+  active: number;
+  locked: number;
 };
 
 export default function Home() {
   const [data, setData] = useState<DashboardData>({
-    categories: [],
+    categoriesTotal: 0,
+    productsTotal: 0,
     products: [],
-    customers: [],
     orders: [],
+  });
+
+  const [orderStats, setOrderStats] = useState<OrderStats>({
+    totalOrders: 0,
+    totalRevenue: 0,
+  });
+
+  const [customerStats, setCustomerStats] = useState<CustomerStats>({
+    total: 0,
+    active: 0,
+    locked: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -25,20 +47,38 @@ export default function Home() {
     try {
       setLoading(true);
 
-      const [categories, products, customers, orders] = await Promise.all([
-        api.get("/categories"),
-        api.get("/products"),
-        api.get("/customers"),
-        api.get("/orders"),
-      ]);
+      const [categories, products, orders, stats, customerStats] =
+        await Promise.all([
+          api.get("/categories?page=1&limit=10"),
+          api.get("/products?page=1&limit=10"),
+          api.get("/orders?page=1&limit=5"),
+          api.get("/orders/stats"),
+          api.get("/customers/stats"),
+        ]);
+
+      setCustomerStats({
+        total: Number(customerStats.total || 0),
+        active: Number(customerStats.active || 0),
+        locked: Number(customerStats.locked || 0),
+      });
 
       setData({
-        categories: Array.isArray(categories)
-          ? categories
-          : categories.data || [],
+        categoriesTotal: Array.isArray(categories)
+          ? categories.length
+          : Number(categories.meta?.total || 0),
+
+        productsTotal: Array.isArray(products)
+          ? products.length
+          : Number(products.meta?.total || 0),
+
         products: Array.isArray(products) ? products : products.data || [],
-        customers: Array.isArray(customers) ? customers : customers.data || [],
+
         orders: Array.isArray(orders) ? orders : orders.data || [],
+      });
+
+      setOrderStats({
+        totalOrders: Number(stats.totalOrders || 0),
+        totalRevenue: Number(stats.totalRevenue || 0),
       });
     } catch (error) {
       console.error("Không thể tải dashboard:", error);
@@ -50,11 +90,6 @@ export default function Home() {
   useEffect(() => {
     loadDashboard();
   }, []);
-
-  const totalRevenue = data.orders.reduce(
-    (total, order) => total + Number(order.totalAmount || 0),
-    0,
-  );
 
   const totalStock = data.products.reduce(
     (total, product) => total + Number(product.stock || 0),
@@ -68,7 +103,7 @@ export default function Home() {
   const stats = [
     {
       title: "Danh mục",
-      value: data.categories.length,
+      value: data.categoriesTotal,
       description: "Danh mục sản phẩm",
       icon: "📁",
       color: "blue",
@@ -76,7 +111,7 @@ export default function Home() {
     },
     {
       title: "Sản phẩm",
-      value: data.products.length,
+      value: data.productsTotal,
       description: `${totalStock} sản phẩm trong kho`,
       icon: "📦",
       color: "violet",
@@ -84,15 +119,15 @@ export default function Home() {
     },
     {
       title: "Khách hàng",
-      value: data.customers.length,
-      description: "Khách hàng đăng ký",
+      value: customerStats.total,
+      description: `${customerStats.active} đang hoạt động`,
       icon: "👥",
       color: "emerald",
       href: "/customers",
     },
     {
       title: "Đơn hàng",
-      value: data.orders.length,
+      value: orderStats.totalOrders,
       description: "Đơn hàng trong hệ thống",
       icon: "🛒",
       color: "orange",
@@ -220,7 +255,7 @@ export default function Home() {
                   {loading ? (
                     <span className="inline-block h-9 w-40 animate-pulse rounded bg-slate-200" />
                   ) : (
-                    formatPrice(totalRevenue)
+                    formatPrice(orderStats.totalRevenue)
                   )}
                 </p>
               </div>
@@ -236,7 +271,7 @@ export default function Home() {
                   <p className="text-sm text-slate-500">Tổng số đơn hàng</p>
 
                   <p className="mt-1 text-xl font-bold text-slate-900">
-                    {loading ? "..." : data.orders.length}
+                    {loading ? "..." : orderStats.totalOrders}
                   </p>
                 </div>
 

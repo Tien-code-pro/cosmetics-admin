@@ -12,7 +12,11 @@ import OrderDetailModal from "@/components/orders/OrderDetailModal";
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    totalCustomers: 0,
+  });
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // =========================
@@ -56,6 +60,20 @@ export default function OrdersPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const loadStats = async () => {
+    try {
+      const result = await api.get("/orders/stats");
+
+      setStats({
+        totalOrders: Number(result.totalOrders || 0),
+        totalRevenue: Number(result.totalRevenue || 0),
+        totalCustomers: Number(result.totalCustomers || 0),
+      });
+    } catch (error) {
+      console.error("Lỗi lấy thống kê đơn hàng:", error);
+    }
   };
 
   // =========================
@@ -114,6 +132,10 @@ export default function OrdersPage() {
     }
   };
 
+  const handleRefresh = async () => {
+    await Promise.all([loadOrders(), loadStats()]);
+  };
+
   // =========================
   // UPDATE ORDER STATUS
   // =========================
@@ -136,6 +158,9 @@ export default function OrdersPage() {
       setSelectedOrder((prev) =>
         prev?.id === orderId ? { ...prev, ...updatedOrder } : prev,
       );
+
+      // Cập nhật lại thống kê từ BE
+      await loadStats();
     } catch (error) {
       console.error("Lỗi cập nhật trạng thái đơn hàng:", error);
 
@@ -172,6 +197,9 @@ export default function OrdersPage() {
       setSelectedOrder((prev) =>
         prev?.id === orderId ? { ...prev, ...updatedOrder } : prev,
       );
+
+      // Cập nhật lại thống kê từ BE
+      await loadStats();
     } catch (error) {
       console.error("Lỗi cập nhật trạng thái thanh toán:", error);
 
@@ -249,6 +277,10 @@ export default function OrdersPage() {
     };
   }, [search, page, limit, status, paymentStatus, paymentMethod]);
 
+  useEffect(() => {
+    loadStats();
+  }, []);
+
   // =========================
   // RENDER
   // =========================
@@ -276,7 +308,7 @@ export default function OrdersPage() {
         </div>
 
         {/* STATS */}
-        {!loading && <OrderStats orders={orders} formatPrice={formatPrice} />}
+        {!loading && <OrderStats stats={stats} formatPrice={formatPrice} />}
 
         {/* TABLE */}
         <OrderTable
@@ -294,7 +326,7 @@ export default function OrdersPage() {
           onPaymentStatusChange={handlePaymentStatusChange}
           onPaymentMethodChange={handlePaymentMethodChange}
           onResetFilters={handleResetFilters}
-          onRefresh={loadOrders}
+          onRefresh={handleRefresh}
           onPageChange={handlePageChange}
           onLimitChange={handleLimitChange}
           onSelectOrder={setSelectedOrder}

@@ -2,21 +2,18 @@
 
 import { Order } from "@/type/order";
 
+interface Stats {
+  totalOrders: number;
+  totalRevenue: number;
+  totalCustomers: number;
+}
+
 interface Props {
-  orders: Order[];
+  stats: Stats;
   formatPrice: (price: number) => string;
 }
 
-export default function OrderStats({ orders, formatPrice }: Props) {
-  const totalRevenue = orders.reduce(
-    (total, order) => total + Number(order.totalAmount || 0),
-    0,
-  );
-
-  const totalCustomers = new Set(
-    orders.map((order) => order.customerId).filter(Boolean),
-  ).size;
-
+export default function OrderStats({ stats, formatPrice }: Props) {
   return (
     <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
       {/* Tổng đơn */}
@@ -26,7 +23,7 @@ export default function OrderStats({ orders, formatPrice }: Props) {
             <p className="text-sm text-slate-500">Tổng đơn hàng</p>
 
             <p className="mt-2 text-2xl font-bold text-slate-900">
-              {orders.length}
+              {stats.totalOrders}
             </p>
           </div>
 
@@ -36,14 +33,14 @@ export default function OrderStats({ orders, formatPrice }: Props) {
         </div>
       </div>
 
-      {/* Tổng doanh thu */}
+      {/* Tổng giá trị đơn hàng */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-500">Tổng giá trị đơn hàng</p>
 
             <p className="mt-2 text-2xl font-bold text-slate-900">
-              {formatPrice(totalRevenue)}
+              {formatPrice(stats.totalRevenue)}
             </p>
           </div>
 
@@ -60,7 +57,7 @@ export default function OrderStats({ orders, formatPrice }: Props) {
             <p className="text-sm text-slate-500">Khách hàng đã đặt</p>
 
             <p className="mt-2 text-2xl font-bold text-slate-900">
-              {totalCustomers}
+              {stats.totalCustomers}
             </p>
           </div>
 
