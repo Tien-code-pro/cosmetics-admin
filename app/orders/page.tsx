@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { Order, OrderStatus } from "@/type/order";
+
+import { Order, OrderStatus, PaymentMethod, PaymentStatus } from "@/type/order";
+
 import OrderStats from "@/components/orders/OrderStats";
 import OrderTable from "@/components/orders/OrderTable";
 import OrderDetailModal from "@/components/orders/OrderDetailModal";
@@ -10,7 +12,31 @@ import OrderDetailModal from "@/components/orders/OrderDetailModal";
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // =========================
+  // FILTER
+  // =========================
+
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<OrderStatus | "">("");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | "">("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
+
+  // =========================
+  // PAGINATION
+  // =========================
+
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  });
 
   // =========================
   // FORMAT
@@ -40,9 +66,39 @@ export default function OrdersPage() {
     try {
       setLoading(true);
 
-      const data = await api.get("/orders");
+      const params = new URLSearchParams();
 
-      setOrders(data);
+      params.set("page", String(page));
+      params.set("limit", String(limit));
+
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      if (status) {
+        params.set("status", status);
+      }
+
+      if (paymentStatus) {
+        params.set("paymentStatus", paymentStatus);
+      }
+
+      if (paymentMethod) {
+        params.set("paymentMethod", paymentMethod);
+      }
+
+      const result = await api.get(`/orders?${params.toString()}`);
+
+      setOrders(result.data || []);
+
+      setPagination(
+        result.pagination || {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      );
     } catch (error) {
       console.error("Lỗi lấy danh sách đơn hàng:", error);
 
@@ -51,6 +107,8 @@ export default function OrdersPage() {
           ? error.message
           : "Không thể lấy danh sách đơn hàng",
       );
+
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -60,10 +118,13 @@ export default function OrdersPage() {
   // UPDATE ORDER STATUS
   // =========================
 
-  const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
+  const handleUpdateStatus = async (
+    orderId: string,
+    newStatus: OrderStatus,
+  ) => {
     try {
       const updatedOrder = await api.patch(`/orders/${orderId}/status`, {
-        status,
+        status: newStatus,
       });
 
       setOrders((prev) =>
@@ -92,13 +153,13 @@ export default function OrdersPage() {
 
   const handleUpdatePaymentStatus = async (
     orderId: string,
-    paymentStatus: "unpaid" | "paid",
+    newPaymentStatus: PaymentStatus,
   ) => {
     try {
       const updatedOrder = await api.patch(
         `/orders/${orderId}/payment-status`,
         {
-          paymentStatus,
+          paymentStatus: newPaymentStatus,
         },
       );
 
@@ -123,12 +184,74 @@ export default function OrdersPage() {
   };
 
   // =========================
-  // INIT
+  // FILTER CHANGE
   // =========================
 
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleStatusChange = (value: OrderStatus | "") => {
+    setStatus(value);
+    setPage(1);
+  };
+
+  const handlePaymentStatusChange = (value: PaymentStatus | "") => {
+    setPaymentStatus(value);
+    setPage(1);
+  };
+
+  const handlePaymentMethodChange = (value: PaymentMethod | "") => {
+    setPaymentMethod(value);
+    setPage(1);
+  };
+
+  // =========================
+  // RESET FILTER
+  // =========================
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setStatus("");
+    setPaymentStatus("");
+    setPaymentMethod("");
+    setPage(1);
+  };
+
+  // =========================
+  // PAGINATION
+  // =========================
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > pagination.totalPages || newPage === page) {
+      return;
+    }
+
+    setPage(newPage);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
+
+  // =========================
+  // INIT / FILTER / PAGINATION
+  // =========================
   useEffect(() => {
-    loadOrders();
-  }, []);
+    const timer = setTimeout(() => {
+      loadOrders();
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [search, page, limit, status, paymentStatus, paymentMethod]);
+
+  // =========================
+  // RENDER
+  // =========================
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -159,7 +282,21 @@ export default function OrdersPage() {
         <OrderTable
           orders={orders}
           loading={loading}
+          search={search}
+          status={status}
+          paymentStatus={paymentStatus}
+          paymentMethod={paymentMethod}
+          page={page}
+          limit={limit}
+          pagination={pagination}
+          onSearchChange={handleSearchChange}
+          onStatusChange={handleStatusChange}
+          onPaymentStatusChange={handlePaymentStatusChange}
+          onPaymentMethodChange={handlePaymentMethodChange}
+          onResetFilters={handleResetFilters}
           onRefresh={loadOrders}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
           onSelectOrder={setSelectedOrder}
           formatPrice={formatPrice}
           formatDate={formatDate}
