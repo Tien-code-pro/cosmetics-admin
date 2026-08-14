@@ -4,16 +4,11 @@ import { useEffect, useState } from "react";
 
 import { api } from "../lib/api";
 import { useDebounce } from "@/hooks/useDebounce";
-import Pagination from "@/components/Pagination";
 
-type Customer = {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string | null;
-  isActive: boolean;
-  createdAt?: string;
-};
+import CustomerStats from "@/components/customers/CustomerStats";
+import CustomerForm from "@/components/customers/CustomerForm";
+import CustomerFilter from "@/components/customers/CustomerFilter";
+import CustomerList, { Customer } from "@/components/customers/CustomerList";
 
 const initialForm = {
   name: "",
@@ -22,16 +17,39 @@ const initialForm = {
   password: "",
 };
 
+const initialMeta = {
+  total: 0,
+  page: 1,
+  limit: 10,
+  totalPages: 1,
+};
+
 export default function CustomersPage() {
+  // =========================
+  // DATA
+  // =========================
+
   const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // =========================
+  // FORM
+  // =========================
 
   const [form, setForm] = useState(initialForm);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // =========================
+  // UI
+  // =========================
+
   const [loading, setLoading] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
+
+  // =========================
+  // SEARCH / FILTER
+  // =========================
 
   const [search, setSearch] = useState("");
 
@@ -39,7 +57,13 @@ export default function CustomersPage() {
 
   const [activeFilter, setActiveFilter] = useState("");
 
+  // =========================
+  // PAGINATION
+  // =========================
+
   const [page, setPage] = useState(1);
+
+  const [meta, setMeta] = useState(initialMeta);
 
   // =========================
   // STATS
@@ -52,17 +76,6 @@ export default function CustomersPage() {
   });
 
   const [statsLoading, setStatsLoading] = useState(true);
-
-  // =========================
-  // PAGINATION
-  // =========================
-
-  const [meta, setMeta] = useState({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  });
 
   // =========================
   // LOAD STATS
@@ -111,14 +124,7 @@ export default function CustomersPage() {
 
       setCustomers(res.data || []);
 
-      setMeta(
-        res.meta || {
-          total: 0,
-          page: 1,
-          limit: 10,
-          totalPages: 1,
-        },
-      );
+      setMeta(res.meta || initialMeta);
     } catch (error) {
       console.error("Lỗi lấy danh sách khách hàng:", error);
     } finally {
@@ -152,7 +158,7 @@ export default function CustomersPage() {
   };
 
   // =========================
-  // HANDLE INPUT
+  // INPUT
   // =========================
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,29 +242,6 @@ export default function CustomersPage() {
     });
   };
 
-  // const handleDelete = async (id: string) => {
-  //   if (!confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) {
-  //     return;
-  //   }
-
-  //   try {
-  //     await api.delete(`/customers/${id}`);
-
-  //     if (editingId === id) {
-  //       resetForm();
-  //     }
-
-  //     await loadCustomers();
-  //   } catch (error) {
-  //     console.error("Lỗi xóa khách hàng:", error);
-
-  //     alert(
-  //       error instanceof Error
-  //         ? error.message
-  //         : "Có lỗi xảy ra khi xóa khách hàng",
-  //     );
-  //   }
-  // };
   // =========================
   // TOGGLE STATUS
   // =========================
@@ -281,6 +264,7 @@ export default function CustomersPage() {
           isActive: nextStatus,
         },
       );
+
       setCustomers((prev) =>
         prev.map((item) =>
           item.id === customer.id
@@ -292,12 +276,9 @@ export default function CustomersPage() {
         ),
       );
 
-      // Cập nhật thống kê ngay lập tức
       setStats((prev) => ({
         total: prev.total,
-
         active: nextStatus ? prev.active + 1 : prev.active - 1,
-
         locked: nextStatus ? prev.locked - 1 : prev.locked + 1,
       }));
     } catch (error) {
@@ -332,20 +313,31 @@ export default function CustomersPage() {
   };
 
   // =========================
-  // DATE
+  // CLEAR FILTER
   // =========================
 
-  const formatDate = (date?: string) => {
-    if (!date) {
-      return "—";
-    }
+  const handleClearFilter = () => {
+    setSearch("");
+    setActiveFilter("");
+    setPage(1);
+  };
 
-    return new Date(date).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
+  // =========================
+  // ADD CUSTOMER
+  // =========================
+
+  const handleAddCustomer = () => {
+    resetForm();
+
+    document.getElementById("customer-form")?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
     });
   };
+
+  // =========================
+  // RENDER
+  // =========================
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -372,14 +364,7 @@ export default function CustomersPage() {
           {!editingId && (
             <button
               type="button"
-              onClick={() => {
-                resetForm();
-
-                document.getElementById("customer-form")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                });
-              }}
+              onClick={handleAddCustomer}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
               <span className="text-lg leading-none">+</span>
@@ -388,506 +373,42 @@ export default function CustomersPage() {
           )}
         </div>
 
-        {/* STATISTICS */}
+        {/* STATS */}
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {/* TOTAL */}
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Tổng khách hàng
-                </p>
-
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {statsLoading ? "—" : stats.total}
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl">
-                👥
-              </div>
-            </div>
-          </div>
-
-          {/* ACTIVE */}
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Đang hoạt động
-                </p>
-
-                <p className="mt-2 text-2xl font-bold text-emerald-600">
-                  {statsLoading ? "—" : stats.active}
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50">
-                <span className="h-3 w-3 rounded-full bg-emerald-500" />
-              </div>
-            </div>
-          </div>
-
-          {/* LOCKED */}
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Đã khóa</p>
-
-                <p className="mt-2 text-2xl font-bold text-red-600">
-                  {statsLoading ? "—" : stats.locked}
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-lg">
-                🔒
-              </div>
-            </div>
-          </div>
-        </div>
+        <CustomerStats stats={stats} loading={statsLoading} />
 
         {/* FORM */}
 
-        <div
-          id="customer-form"
-          className={`mb-6 overflow-hidden rounded-xl border bg-white shadow-sm ${
-            editingId ? "border-amber-300" : "border-slate-200"
-          }`}
-        >
-          <div
-            className={`flex items-center justify-between border-b px-5 py-4 ${
-              editingId ? "border-amber-200 bg-amber-50/60" : "border-slate-200"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${
-                  editingId ? "bg-amber-100" : "bg-blue-50"
-                }`}
-              >
-                {editingId ? "✏️" : "+"}
-              </div>
+        <CustomerForm
+          form={form}
+          editingId={editingId}
+          submitting={submitting}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          onReset={resetForm}
+        />
 
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">
-                  {editingId ? "Chỉnh sửa khách hàng" : "Thêm khách hàng mới"}
-                </h2>
+        {/* FILTER */}
 
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {editingId
-                    ? "Cập nhật thông tin tài khoản khách hàng"
-                    : "Tạo tài khoản khách hàng mới"}
-                </p>
-              </div>
-            </div>
+        <CustomerFilter
+          search={search}
+          activeFilter={activeFilter}
+          onSearchChange={handleSearchChange}
+          onActiveFilterChange={handleActiveFilterChange}
+          onClear={handleClearFilter}
+        />
 
-            {editingId && (
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                Đang chỉnh sửa
-              </span>
-            )}
-          </div>
+        {/* LIST */}
 
-          <form onSubmit={handleSubmit} className="p-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {/* NAME */}
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Họ và tên
-                  <span className="ml-1 text-red-500">*</span>
-                </label>
-
-                <input
-                  name="name"
-                  type="text"
-                  placeholder="Nguyễn Văn A"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                />
-              </div>
-
-              {/* EMAIL */}
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Email
-                  <span className="ml-1 text-red-500">*</span>
-                </label>
-
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="example@gmail.com"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                />
-              </div>
-
-              {/* PHONE */}
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Số điện thoại
-                </label>
-
-                <input
-                  name="phone"
-                  type="tel"
-                  placeholder="0987654321"
-                  value={form.phone}
-                  onChange={handleChange}
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                />
-              </div>
-
-              {/* PASSWORD */}
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Mật khẩu
-                  <span className="ml-1 text-red-500">*</span>
-                  {editingId && (
-                    <span className="ml-1 text-xs font-normal text-slate-400">
-                      (không đổi thì để trống)
-                    </span>
-                  )}
-                </label>
-
-                <input
-                  name="password"
-                  type="password"
-                  placeholder={editingId ? "Mật khẩu mới" : "Tối thiểu 6 ký tự"}
-                  value={form.password}
-                  onChange={handleChange}
-                  required={!editingId}
-                  minLength={6}
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                />
-              </div>
-            </div>
-
-            {/* BUTTON */}
-
-            <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={submitting}
-                  className="h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Hủy
-                </button>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {submitting ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Đang lưu...
-                  </>
-                ) : editingId ? (
-                  <>
-                    <span>✓</span>
-                    Cập nhật
-                  </>
-                ) : (
-                  <>
-                    <span>+</span>
-                    Thêm khách hàng
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* SEARCH */}
-
-        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-3 lg:flex-row">
-            <div className="relative flex-1">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                🔍
-              </span>
-
-              <input
-                type="text"
-                placeholder="Tìm theo tên, email hoặc số điện thoại..."
-                value={search}
-                onChange={handleSearchChange}
-                className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-              />
-            </div>
-
-            <select
-              value={activeFilter}
-              onChange={handleActiveFilterChange}
-              className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition hover:border-slate-400 focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-            >
-              <option value="">Tất cả trạng thái</option>
-
-              <option value="true">Đang hoạt động</option>
-
-              <option value="false">Đã khóa</option>
-            </select>
-
-            {(search || activeFilter) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setActiveFilter("");
-                  setPage(1);
-                }}
-                className="h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-              >
-                Xóa bộ lọc
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* TABLE */}
-
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">
-                Danh sách khách hàng
-              </h2>
-
-              <p className="mt-0.5 text-xs text-slate-500">
-                {loading
-                  ? "Đang tải dữ liệu..."
-                  : `Hiển thị ${customers.length} khách hàng`}
-              </p>
-            </div>
-
-            {!loading && customers.length > 0 && (
-              <span className="w-fit rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                Trang {meta.page} / {meta.totalPages}
-              </span>
-            )}
-          </div>
-
-          {/* LOADING */}
-
-          {loading ? (
-            <div className="divide-y divide-slate-100">
-              {[1, 2, 3, 4, 5].map((item) => (
-                <div key={item} className="flex items-center gap-4 px-5 py-4">
-                  <div className="h-10 w-10 animate-pulse rounded-full bg-slate-200" />
-
-                  <div className="space-y-2">
-                    <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-
-                    <div className="h-3 w-28 animate-pulse rounded bg-slate-200" />
-                  </div>
-
-                  <div className="ml-auto h-8 w-28 animate-pulse rounded bg-slate-200" />
-                </div>
-              ))}
-            </div>
-          ) : customers.length === 0 ? (
-            /* EMPTY */
-
-            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl">
-                👥
-              </div>
-
-              <h3 className="text-sm font-semibold text-slate-900">
-                Không tìm thấy khách hàng
-              </h3>
-
-              <p className="mt-1 max-w-sm text-xs text-slate-500">
-                Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.
-              </p>
-            </div>
-          ) : (
-            /* TABLE */
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1000px]">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      Khách hàng
-                    </th>
-
-                    <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      Email
-                    </th>
-
-                    <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      Số điện thoại
-                    </th>
-
-                    <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      Ngày tạo
-                    </th>
-
-                    <th className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      Trạng thái
-                    </th>
-
-                    <th className="px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      Hành động
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {customers.map((customer) => (
-                    <tr
-                      key={customer.id}
-                      className={`group transition ${
-                        editingId === customer.id
-                          ? "bg-amber-50/50"
-                          : "hover:bg-slate-50/70"
-                      }`}
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold uppercase text-blue-600">
-                            {customer.name?.charAt(0) || "?"}
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">
-                              {customer.name}
-                            </p>
-
-                            <p className="mt-0.5 text-[11px] text-slate-400">
-                              ID: {customer.id.slice(0, 8)}
-                              ...
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <span className="text-sm text-slate-600">
-                          {customer.email}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        {customer.phone ? (
-                          <span className="text-sm text-slate-600">
-                            {customer.phone}
-                          </span>
-                        ) : (
-                          <span className="text-xs italic text-slate-400">
-                            Chưa cập nhật
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <span className="text-sm text-slate-600">
-                          {formatDate(customer.createdAt)}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        {customer.isActive ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Hoạt động
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                            Đã khóa
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(customer)}
-                            title="Chỉnh sửa"
-                            className="cursor-pointer flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                          >
-                            ✏️
-                            <span>Sửa</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleStatus(customer)}
-                            title={
-                              customer.isActive
-                                ? "Khóa khách hàng"
-                                : "Mở khóa khách hàng"
-                            }
-                            className={`cursor-pointer flex h-8 items-center gap-1.5 rounded-lg border bg-white px-2.5 text-xs font-medium transition ${
-                              customer.isActive
-                                ? "border-amber-200 text-amber-600 hover:bg-amber-50"
-                                : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                            }`}
-                          >
-                            {customer.isActive ? "🔒" : "🔓"}
-
-                            <span>
-                              {customer.isActive ? "Khóa" : "Mở khóa"}
-                            </span>
-                          </button>
-                          {/* <button
-                            onClick={() => handleDelete(customer.id)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-white px-3.5 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                          >
-                            🗑️
-                            <span>Xóa</span>
-                          </button> */}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* PAGINATION */}
-
-          {!loading && meta.totalPages > 1 && (
-            <div className="border-t border-slate-200">
-              <Pagination
-                page={meta.page}
-                totalPages={meta.totalPages}
-                onPageChange={setPage}
-              />
-            </div>
-          )}
-
-          {/* FOOTER */}
-
-          {!loading && customers.length > 0 && (
-            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-5 py-3">
-              <p className="text-xs text-slate-500">
-                Trang {meta.page} / {meta.totalPages}
-              </p>
-            </div>
-          )}
-        </div>
+        <CustomerList
+          customers={customers}
+          loading={loading}
+          meta={meta}
+          editingId={editingId}
+          onEdit={handleEdit}
+          onToggleStatus={handleToggleStatus}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );
