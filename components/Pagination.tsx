@@ -55,7 +55,7 @@ export default function Pagination({
           disabled={page === 1}
           onClick={() => onPageChange(page - 1)}
           className="
-            flex h-9 w-9 items-center justify-center
+            cursor-pointer flex h-9 w-9 items-center justify-center
             rounded-lg border border-slate-200
             bg-white text-slate-500
             transition
@@ -95,6 +95,7 @@ export default function Pagination({
               type="button"
               onClick={() => onPageChange(pageNumber)}
               className={`
+                cursor-pointer
                 flex h-9 min-w-9 items-center justify-center
                 rounded-lg border
                 px-2.5 text-sm font-medium
@@ -117,7 +118,7 @@ export default function Pagination({
           disabled={page === totalPages}
           onClick={() => onPageChange(page + 1)}
           className="
-            flex h-9 w-9 items-center justify-center
+            cursor-pointer flex h-9 w-9 items-center justify-center
             rounded-lg border border-slate-200
             bg-white text-slate-500
             transition

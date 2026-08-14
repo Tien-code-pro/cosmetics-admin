@@ -824,7 +824,7 @@ export default function CustomersPage() {
                             type="button"
                             onClick={() => handleEdit(customer)}
                             title="Chỉnh sửa"
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                            className="cursor-pointer flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                           >
                             ✏️
                             <span>Sửa</span>
@@ -838,7 +838,7 @@ export default function CustomersPage() {
                                 ? "Khóa khách hàng"
                                 : "Mở khóa khách hàng"
                             }
-                            className={`flex h-8 items-center gap-1.5 rounded-lg border bg-white px-2.5 text-xs font-medium transition ${
+                            className={`cursor-pointer flex h-8 items-center gap-1.5 rounded-lg border bg-white px-2.5 text-xs font-medium transition ${
                               customer.isActive
                                 ? "border-amber-200 text-amber-600 hover:bg-amber-50"
                                 : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
