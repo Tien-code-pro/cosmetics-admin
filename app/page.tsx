@@ -33,10 +33,12 @@ export default function Home() {
       ]);
 
       setData({
-        categories,
-        products,
-        customers,
-        orders,
+        categories: Array.isArray(categories)
+          ? categories
+          : categories.data || [],
+        products: Array.isArray(products) ? products : products.data || [],
+        customers: Array.isArray(customers) ? customers : customers.data || [],
+        orders: Array.isArray(orders) ? orders : orders.data || [],
       });
     } catch (error) {
       console.error("Không thể tải dashboard:", error);

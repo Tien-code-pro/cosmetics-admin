@@ -1,95 +1,137 @@
 "use client";
 
-type Props = {
+interface PaginationProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-};
+}
 
-export default function Pagination({ page, totalPages, onPageChange }: Props) {
-  if (totalPages <= 1) return null;
+export default function Pagination({
+  page,
+  totalPages,
+  onPageChange,
+}: PaginationProps) {
+  if (totalPages <= 1) {
+    return null;
+  }
 
-  const getPages = () => {
+  const getPages = (): (number | string)[] => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
-    if (page <= 4) {
-      return [1, 2, 3, 4, 5, "...", totalPages];
+    const pages: (number | string)[] = [];
+
+    pages.push(1);
+
+    if (page > 3) {
+      pages.push("...");
     }
 
-    if (page >= totalPages - 3) {
-      return [
-        1,
-        "...",
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-        totalPages,
-      ];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
     }
 
-    return [1, "...", page - 1, page, page + 1, "...", totalPages];
+    if (page < totalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
   };
 
   const pages = getPages();
 
   return (
-    <div className="flex items-center justify-center gap-1 border-t border-slate-200 bg-white px-6 py-4">
-      {/* PREVIOUS */}
+    <div className="flex items-center justify-center px-5 py-5">
+      <div className="flex items-center gap-1.5">
+        {/* PREVIOUS */}
+        <button
+          type="button"
+          disabled={page === 1}
+          onClick={() => onPageChange(page - 1)}
+          className="
+            flex h-9 w-9 items-center justify-center
+            rounded-lg border border-slate-200
+            bg-white text-slate-500
+            transition
+            hover:border-blue-200
+            hover:bg-blue-50
+            hover:text-blue-600
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          "
+          aria-label="Trang trước"
+        >
+          ←
+        </button>
 
-      <button
-        type="button"
-        onClick={() => onPageChange(page - 1)}
-        disabled={page <= 1}
-        className="mr-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        ← Trước
-      </button>
+        {/* PAGES */}
+        {pages.map((item, index) => {
+          if (item === "...") {
+            return (
+              <span
+                key={`dots-${index}`}
+                className="
+                  flex h-9 w-9 items-center justify-center
+                  text-sm text-slate-400
+                "
+              >
+                …
+              </span>
+            );
+          }
 
-      {/* PAGES */}
+          const pageNumber = item as number;
+          const isActive = pageNumber === page;
 
-      {pages.map((item, index) => {
-        if (item === "...") {
           return (
-            <span
-              key={`dots-${index}`}
-              className="flex h-8 w-8 items-center justify-center text-sm text-slate-400"
+            <button
+              key={pageNumber}
+              type="button"
+              onClick={() => onPageChange(pageNumber)}
+              className={`
+                flex h-9 min-w-9 items-center justify-center
+                rounded-lg border
+                px-2.5 text-sm font-medium
+                transition
+                ${
+                  isActive
+                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                }
+              `}
             >
-              ...
-            </span>
+              {pageNumber}
+            </button>
           );
-        }
+        })}
 
-        const pageNumber = item as number;
-
-        return (
-          <button
-            key={pageNumber}
-            type="button"
-            onClick={() => onPageChange(pageNumber)}
-            className={`h-8 min-w-8 rounded-lg px-2 text-sm font-medium transition ${
-              pageNumber === page
-                ? "bg-blue-600 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            {pageNumber}
-          </button>
-        );
-      })}
-
-      {/* NEXT */}
-
-      <button
-        type="button"
-        onClick={() => onPageChange(page + 1)}
-        disabled={page >= totalPages}
-        className="ml-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Sau →
-      </button>
+        {/* NEXT */}
+        <button
+          type="button"
+          disabled={page === totalPages}
+          onClick={() => onPageChange(page + 1)}
+          className="
+            flex h-9 w-9 items-center justify-center
+            rounded-lg border border-slate-200
+            bg-white text-slate-500
+            transition
+            hover:border-blue-200
+            hover:bg-blue-50
+            hover:text-blue-600
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          "
+          aria-label="Trang sau"
+        >
+          →
+        </button>
+      </div>
     </div>
   );
 }
